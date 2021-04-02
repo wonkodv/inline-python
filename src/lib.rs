@@ -21,7 +21,7 @@
 //! ## Using Rust variables
 //!
 //! To reference Rust variables, use `'var`, as shown in the example above.
-//! `var` needs to implement [`pyo3::ToPyObject`].
+//! `var` needs to implement [`pyo3::ToPyObject`] and can only be read!
 //!
 //! ## Re-using a Python context
 //!
@@ -108,6 +108,7 @@
 //!
 //! Everything else should work fine.
 
+pub use inline_python_macros::python;
 use pyo3::{types::PyDict, Python};
 
 mod context;
@@ -132,7 +133,6 @@ pub use pyo3;
 ///     as [`Context::run`].
 ///
 /// See [the crate's module level documentation](index.html) for examples.
-pub use inline_python_macros::python;
 
 #[doc(hidden)]
 pub trait FromInlinePython<F: FnOnce(&PyDict)> {

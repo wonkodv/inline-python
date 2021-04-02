@@ -78,9 +78,11 @@ impl EmbedPython {
 						} else {
 							unreachable!()
 						};
-						let name_str = format!("_RUST_{}", name);
+						let name_str = name.to_string();
+						self.python.push_str("_RUST_IMMUT_VARS['");
 						self.python.push_str(&name_str);
-						self.loc.column += name_str.chars().count() - 6 + 1;
+						self.python.push_str("']");
+						self.loc.column += name_str.chars().count() + 1;
 						self.variables.entry(name_str).or_insert(name);
 					} else if x.as_char() == '#' && x.spacing() == Spacing::Joint {
 						// Convert '##' to '//', because otherwise it's

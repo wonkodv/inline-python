@@ -51,9 +51,9 @@ fn python_impl(input: TokenStream) -> Result<TokenStream, TokenStream> {
 	Ok(quote! {
 		::inline_python::FromInlinePython::from_python_macro(
 			#bytecode,
-			|globals| {
+			|rust_vars| {
 				#(
-					globals
+					rust_vars
 						.set_item(#varname, #var)
 						.expect("Unable to convert variable to Python");
 				)*

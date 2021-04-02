@@ -66,9 +66,35 @@ impl Context {
 	}
 
 	fn try_new(py: Python) -> PyResult<Self> {
-		Ok(Self {
-			globals: py.import("__main__")?.dict().copy()?.into(),
-		})
+		let rust_vars = PyDict::new(py);
+		let globals = PyDict::new(py);
+		let ctx = Self { globals: globals.into() };
+		ctx.run_with_gil(
+			py,
+			inline_python_macros::python! {
+				class RustVars:
+					__slots__ = ("_dict", "_mutable")
+					def __init__(self, mutable:bool):
+						self._dict = dict()
+						self._mutable = mutable
+
+					def __setitem__(self, key, value):
+						if self._mutable:
+							self._dict[key] = value
+						else:
+							raise TypeError("You are trying to write to "+'\''+key+" which is read-only. Try #"+key)
+
+					def __getitem__(self, key):
+						return self._dict[key]
+
+				_RUST_MUT_VARS = RustVars(True)
+				_RUST_IMMUT_VARS = RustVars(False)
+
+				del RustVars
+				from builtins import *
+			},
+		);
+		Ok(ctx)
 	}
 
 	/// Get the globals as dictionary.
@@ -192,7 +218,16 @@ impl Context {
 	///
 	/// This function panics if the Python code fails.
 	pub fn run_with_gil<F: FnOnce(&PyDict)>(&self, py: Python<'_>, code: PythonBlock<F>) {
-		(code.set_variables)(self.globals(py));
+		let immut_vars = self
+			.globals(py)
+			.get_item("_RUST_IMMUT_VARS")
+			.unwrap()
+			.getattr("_dict")
+			.unwrap()
+			.cast_as::<PyDict>()
+			.unwrap();
+
+		(code.set_variables)(&immut_vars);
 		match run_python_code(py, self, code.bytecode) {
 			Ok(_) => (),
 			Err(e) => {
@@ -200,5 +235,9 @@ impl Context {
 				panic!("{}", "python!{...} failed to execute");
 			}
 		}
+	}
+
+	pub fn try_run<F: FnOnce(&PyDict)>(&self, code: PythonBlock<F>) -> Result<(), pyo3::PyErr> {
+		todo!();
 	}
 }
